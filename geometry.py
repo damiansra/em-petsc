@@ -2,6 +2,11 @@ import numpy as np
 # Dimension object based on PyClaw dimension object
 # Default mapc2p function
 
+## try:
+##    from petsc4py.PETSc import DA
+## except ImportError:
+##    from fakeda import DA
+
 
 class Dimension(object):
     r"""
@@ -281,6 +286,7 @@ class PETSc_grid(Grid,object):
     r"""
     creates the petsc_grid object
     """
+
     @property
     def staggered_edge(self,nvec):
         r"""
