@@ -1,99 +1,35 @@
 #!/usr/bin/python
 import numpy as np
-import simulation_parameters as parameters
-class material:
-#    ------- vacuum
+class material(object):
+#   ------- vacuum configuration
+
+    def __init__(self,parameters,t=0,**kargs):
+        self.vacuum_config = parameters.vacuum_config    
+        cls_dict = self.__class__.__dict__
+        for key in kargs:
+            assert key in cls_dict
+        self.__dict__.update(kargs)
+        self.bkg_er = parameters.bkg_er
+        self.bkg_mr = parameters.bkg_mr
+        self.n = np.sqrt(self.bkg_er*self.bkg_mr)
+        self.mat_shape = parameters.mat_shape
+        self.vacuum_config = parameters.vacuum_config
+        self.t_aux = t
+
     def vacuum(self):
         if self.vacuum_config=='real':
             self.eo = 8.854187817e-12            # vacuum permittivity   - [F/m]
             self.mo = 4e-7*np.pi                 # vacuum peremeability  - [V.s/A.m]
             self.co = 1/np.sqrt(self.eo*self.mo)           # vacuum speed of light - [m/s]
             self.zo = np.sqrt(self.eo/self.mo)
-        elif self.vacuum_config=='one':
+        else:
             self.eo = 1            # vacuum permittivity   - [F/m]
             self.mo = 1                 # vacuum peremeability  - [V.s/A.m]
             self.co = 1/np.sqrt(self.eo*self.mo)           # vacuum speed of light - [m/s]
             self.zo = np.sqrt(self.eo/self.mo)
         
         return self
-
-    def __init__(self):
-        self.vacuum_config = parameters.vacuum_config
-        self.bkg_er = parameters.bkg_er
-        self.bkg_mr = parameters.bkg_mr
-        self.vacuum()
-
-    # # ------- material
-    # def build_material(self,shape=parameters.shape):
-    #     """
-    #         buiild_material(shape=parameters.shape)
-
-    #         material definition: 
-            
-    #         ..: homogeneous
-    #         ..: interface 
-    #         ..: rip (moving perturbation) 
-    #         ..: multilayered
-    #     """
-
-    #     # build vacuum properties
-    #     vacuum(self,self.vacuum_config)
-
-    #     # build background
-    #     self.bkg_n  = self.np.sqrt(self.bkg_er*self.bkg_mr)
-    #     self.bkg_e  = self.eo*self.bkg_er
-    #     self.bkg_m  = self.mo*self.bkg_mr
-        
-    #     # get material shape
-    #     self.mat_shape = shape   
-
-    #     # if interface declare position
-    #     material.x_change = parameters.x_upper/2
-
-    #     # set moving refractive index parameters
-    #     material.rip_vx_e    = 0.0*co    # replace here the value of x
-    #     rip_vx_m    = rip_vx_e
-    #     rip_vy_e    = 0.0*co
-    #     rip_vy_m    = rip_vy_e
-
-    #     rip_xoff_e  = 10e-6
-    #     rip_xoff_m  = rip_xoff_e
-    #     rip_yoff_e  = rip_xoff_e
-    #     rip_yoff_m  = rip_xoff_e
-
-    #     rip_xsig_e  = 10.0e-6
-    #     rip_xsig_m  = rip_xsig_e
-    #     rip_ysig_e  = .9*y_upper/2
-    #     rip_ysig_m  = rip_ysig_e
-    #     s_x_e       = rip_xsig_e**2
-    #     s_x_m       = rip_xsig_m**2
-    #     s_y_e       = rip_ysig_e**2
-    #     s_y_m       = rip_ysig_m**2
-
-    #     prip        = 0.1
-    #     deltan      = prip*(bkg_n) # assumes epsilon = mu
-    #     d_e         = deltan #*(2.0*1.5+deltan)
-    #     d_m         = deltan #*(2.0*1.5+deltan)
-
-    #     # set multilayer parameters
-
-    #     # multilayered definition
-    #     n_layers = 2
-    #     layers = np.zeros([n_layers,7]) # _layer:  eps mu N t chi2e chi2m chi3e chi3m
-    #     layers[0,0] = 1.5
-    #     layers[0,1] = 1.5
-    #     layers[0,2] = 10
-    #     layers[0,3] = 15e-9
-    #     layers[1,0] = 2.5
-    #     layers[1,1] = 2.5
-    #     layers[1,2] = layers[0,2] - 1
-    #     layers[1,3] = 50e-9
-    #     N_layers = 5
-    #     if mat_shape=='multilayer':
-    #         y_upper = N_layers*np.sum(layers[:,3])+layers[0,3]
-    #         tlp = np.sum(layers[:,3])
-    #         mlp = np.floor(tlp/1e-9)
-
+    
     # def etar(da,ddx,ddy,t=0):
     #     """
     #     eta = etar(num_aux,xi,xf,yi,yf,ddx,ddy)
