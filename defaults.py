@@ -40,7 +40,6 @@ class Params(object):
     dimension_points = np.zeros([2])
     dimension_resolution = np.zeros([2])
     dimension_steps = np.zeros([2])
-    dimension_c
     dimension_lower[0] = 0.0e-6                     # fill array with some initial values
     dimension_upper[0] = 100e-6                    
     dimension_lower[1] = 0.0e-6
@@ -86,23 +85,17 @@ class Params(object):
         self.set_source()
         self.set_dims(shape=self.aux_shape)
 
-    def set_source(self,source_type=self.source_type):
-        if source_type=='plane':
-            self.source_lambda  = 1e-6                           # wavelength
-            self.source_time_width = 1.0*self.source_lambda           # width in time (pulse only)
-            self.source_width[0] = 1.0*self.source_lambda             # width in the x-direction (pulse)
-            self.source_width[1] = dimension_upper[1]-dimension_lower[1] # width in the y-direction 
-            self.source_t_offset  = 0.0                          # offset in time
-            self.source_offset[0]  = 0.0                         # offset in the x-direction
-            self.source_offset[1]  = dimension_upper[1]/2.0      # offset in the y-direction
-            self.source_k        = 2.0*np.pi/self.source_lambda       # wave vector
-            self.source_amp_q1   = 0.0                           # Amplitude of q1, q2 and q3
-            self.source_amp_q2   = 1.0
-            self.source_amp_q3   = 1.0
-            self.source_omega = 2.0*np.pi*self.co/self.source_lambda
-        else:
-            pass
-
+    def set_source(self):
+        self.source_lambda  = 1e-6                           # wavelength
+        self.source_time_width = 1.0*self.source_lambda           # width in time (pulse only)
+        self.source_width = [1.0*self.source_lambda, self.dimension_upper[1] - self.dimension_lower[1]] # width in the y-direction 
+        self.source_t_offset  = 0.0                          # offset in time
+        self.source_offset  = [0.0, self.dimension_upper[1]/2.0]      # offset in the y-direction
+        self.source_k        = 2.0*np.pi/self.source_lambda       # wave vector
+        self.source_amp_q1   = 0.0                           # Amplitude of q1, q2 and q3
+        self.source_amp_q2   = 1.0
+        self.source_amp_q3   = 1.0
+        self.source_omega = 2.0*np.pi*self.co/self.source_lambda
         return self    
 
     def set_dims(self,shape=aux_shape):
@@ -137,7 +130,7 @@ class Params(object):
         self.dt = self.__ddt
         return self
 
-    def set_material(self,n_layers=self._nlayers,N_layers=self._Nlayers,rip=self._is_rip):
+    def set_material(self,shape=aux_shape,n_layers=_nlayers,N_layers=_Nlayers,rip=_is_rip):
         """
         set_material(shape=aux_shape,vx=0,vy=0,x_offset=10e-6,y_offset=0,sigma=10e-6,n_layers=2,N_layers=5)
 
@@ -160,17 +153,17 @@ class Params(object):
         """
 
         # create a material base matrix
-        if self.aux_tensor_kind=='isotropic'
+        if self.aux_tensor_kind=='isotropic':
             # background configuration
             self.aux_base[0,0] = 1.
             self.aux_base[1,1] = 1.
             self.aux_base[2,2] = 1.
-        elif self.aux_tensor_kind=='anisotropic'
+        elif self.aux_tensor_kind=='anisotropic':
            # background configuration
             self.aux_base[0,0:1] = 1.
             self.aux_base[1,0:1] = 1.
             self.aux_base[2,2] = 1.
-        elif self.aux_tensor_kind=='bianisotropic'
+        elif self.aux_tensor_kind=='bianisotropic':
             # background configuration
             self.aux_base[:,:] = 1.
         
@@ -225,7 +218,7 @@ class Params(object):
             elif self.aux_tensor_kind=='bianisotropic':
                 self.aux_gaussian_sigma.fill(1.0)
                 self.aux_gaussian_offset.fill(1.0)
-        elif shape=='jump'
+        elif shape=='jump':
             pass
         elif shape=='multilayer':
             self.aux_n_layers = n_layers
@@ -257,18 +250,16 @@ class Params(object):
             self.rip = self._is_rip
             self.aux_rip_velocity = np.zeros([self.num_dim,self.num_aux,self.num_aux])
             if self.aux_tensor_kind=='isotropic':
-                for j in range(0,self.num_aux):
-                    self.aux_rip_velocity[:,j,j] = 1.0
+                for j in range(0,self.num_dim):
+                    np.fill_diagonal(self.aux_rip_velocity[j],1.0)
             elif self.aux_tensor_kind=='anisotropic':
-                for j in range(0,self.num_aux):
-                    self.aux_rip_velocity[:,j,j] = 1.0
-
-            self.aux_rip_velocity[:,0:self.num_aux-1,0:self.num_aux-1] = 1.0
-            self.aux_rip_velocity[:,self.num_aux,self.num_aux] = 1.0
+                for j in range(0,self.num_dim):
+                    np.fill_diagonal(self.aux_rip_velocity[j],1.0)
+                self.aux_rip_velocity[:,0:self.num_aux-2,0:self.num_aux-2] = 1.0
 
         return self
 
-    def set_vacuum(self,vc_config=vacuum_config,mode_config=self.mode):
+    def set_vacuum(self,vc_config=vacuum_config,mode_config=mode):
 
         self.vacuum = np.zeros(self.num_aux)
         if vc_config=='real':
@@ -282,10 +273,10 @@ class Params(object):
             self.co = 1/np.sqrt(self.eo*self.mo)           # vacuum speed of light - [m/s]
             self.zo = np.sqrt(self.eo/self.mo)
         
-        if mode_config=='TE'
+        if mode_config=='TE':
             self.vacuum[0:1] = self.mo
             self.vacuum[2]  = self.eo
-        elif mode_config=='TM'
+        elif mode_config=='TM':
             self.vacuum[0:1] = self.eo
             self.vacuum[2]  = self.mo
 
