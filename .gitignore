@@ -1,0 +1,21 @@
+# ignore silly log files
+
+*.log
+
+# ignore silly egg files
+
+*.egg-info
+
+# ignore so files
+
+*.so
+
+# ignore data files
+
+*.dat
+*.info
+*.vtk
+
+# ignore runtime python compiled codes
+
+*.pyc
