@@ -1,7 +1,7 @@
-all: fdtd_da_pml.so build_pml.so
+all: FDTDSolvers2D.so PMLBuild.so
 
-fdtd_da_pml.so: fdtd_da_pml.f90
+FDTDSolvers2D.so: FDTDSolvers2D.f90
 	f2py  -m $(basename $(notdir $@)) -c $^
 
-build_pml.so: build_pml.f90
+PMLBuild.so: FDTDPMLBuild.f90
 	f2py  -m $(basename $(notdir $@)) -c $^
