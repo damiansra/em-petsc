@@ -1,5 +1,5 @@
-module Solvers
-contains
+! module Solvers
+! contains
 
   !============================================================================================================
   subroutine fdtd(aux,pml,dxdt,dydt,s1,s2,s3,s4,q1,q2,q3,na,np,xi,xf,yi,yf,gxi,gxf,gyi,gyf,q_type,pml_decomp)
@@ -177,4 +177,4 @@ contains
 
   end subroutine fdtd_dispersion
 
-end module Solvers
+! end module Solvers

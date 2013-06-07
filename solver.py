@@ -1,5 +1,5 @@
 r"""
-Module specifying the interface to every solver in PyClaw.
+Module specifying the interface to every FDTD Solver.
 """
 import logging
 
@@ -18,25 +18,25 @@ class BC():
     wall = 3
 
 #################### Dummy routines ######################
-def default_compute_gauge_values(q,aux):
-    r"""By default, record values of q at gauges.
+def default_compute_probe_values(q,aux):
+    r"""By default, record values of q at probes.
     """
     return q
 
 class Solver(object):
     r"""
-    Pyclaw solver superclass.
+    This class is based on the Pyclaw solver superclass by David I. Ketcheson and Aron Ahmadia.
 
-    The pyclaw.Solver.solver class is an abstract class that should
-    not be instantiated; rather, all Solver classes should inherit from it.
+    The class is an abstract construct from which all Solver clases inherit. 
 
-    A Solver is typically instantiated as follows::
-
-        >>> from clawpack import pyclaw
-        >>> solver = pyclaw.ClawSolver2D()
+    A Solver class is typically instantiated as follows::
+        >>> import fdtd
+        or
+        >>> from em import fdtd
+        >>> solver = fdtd.FDTDSolver2D()
 
     After which solver options may be set.  It is always necessary to set
-    solver.num_waves to the number of waves used in the Riemann solver.
+    solver.num_waves to the number of waves used in the fdtd solver.
     Typically it is also necessary to set the boundary conditions (for q, and
     for aux if an aux array is used).  Many other options may be set
     for specific solvers; for instance the limiter to be used, whether to
@@ -66,10 +66,6 @@ class Solver(object):
         solver.status is reset each time solver.evolve_to_time is called, and
         it is also returned by solver.evolve_to_time.
     
-    .. attribute:: dt_variable
-    
-        Whether to allow the time step to vary, ``default = True``.
-        If false, the initial time step size is used for all steps.
         
     .. attribute:: max_steps
     
@@ -77,10 +73,6 @@ class Solver(object):
         requested, ``default = 10000``.  If exceeded, an exception is
         raised.
     
-    .. attribute:: logger
-    
-        Default logger for all solvers.  Records information about the run
-        and debugging messages (if requested).
 
     .. attribute:: bc_lower 
     
@@ -144,43 +136,21 @@ class Solver(object):
         
         See :class:`Solver` for full documentation
         """ 
-        # Setup solve logger
-        self.logger = logging.getLogger('evolve')
-        self.dt_initial = 0.1
-        self.dt_max = 1e99
+
         self.max_steps = 10000
-        self.dt_variable = True
-        self.num_waves = None #Must be set later to agree with Riemann solver
         self.qbc = None
         self.auxbc = None
-        self.rp = None
+        self.fs = None
         self.fmod = None
         self._is_set_up = False
 
-        # select package to build solver objects from, by default this will be
-        # the package that contains the module implementing the derived class
-        # for example, if ClawSolver1D is implemented in 'clawpack.petclaw.solver', then 
-        # the computed claw_package will be 'clawpack.petclaw'
-        
-        import sys
-        if claw_package is not None and claw_package in sys.modules:
-            self.claw_package = sys.modules[claw_package]
-        else:
-            def get_clawpack_dot_xxx(modname): return modname.rpartition('.')[0].rpartition('.')[0]
-            claw_package_name = get_clawpack_dot_xxx(self.__module__)
-            if claw_package_name in sys.modules:
-                self.claw_package = sys.modules[claw_package_name]
-            else:
-                raise NotImplementedError("Unable to determine solver package, please provide one")
-
         # Initialize time stepper values
-        self.dt = self.dt_initial
+        self.dt = 0.1
         self.cfl = self.claw_package.CFL(self.cfl_desired)
        
         # Status Dictionary
         self.status = {'cflmax':self.cfl.get_cached_max(),
-                       'dtmin':self.dt, 
-                       'dtmax':self.dt,
+                       'dt':self.dt,
                        'numsteps':0 }
         
         # No default BCs; user must set them
@@ -195,19 +165,12 @@ class Solver(object):
         self.user_aux_bc_lower = None
         self.user_aux_bc_upper = None
 
-        self.compute_gauge_values = default_compute_gauge_values
-        r"""(function) - Function that computes quantities to be recorded at gauges"""
+        self.compute_probe_values = default_compute_probe_values
+        r"""(function) - Function that computes quantities to be recorded at probes"""
 
-        self.qbc          = None
+        self.qbc = None
         r""" Array to hold ghost cell values.  This is the one that gets passed
         to the Fortran code.  """
-
-        if riemann_solver is not None:
-            self.rp = riemann_solver
-            rp_name = riemann_solver.__name__.split('.')[-1]
-            from clawpack import riemann
-            self.num_eqn = riemann.static.num_eqn[rp_name]
-            self.num_waves = riemann.static.num_waves[rp_name]
 
         self._isinitialized = True
 
@@ -659,7 +622,7 @@ class Solver(object):
                 # Verbose messaging
                 self.logger.debug("Step %i  CFL = %s   dt = %s   t = %s"
                     % (n,cfl,self.dt,solution.t))
-                self.write_gauge_values(solution)
+                self.write_probe_values(solution)
                 # Increment number of time steps completed
                 self.status['numsteps'] += 1
             else:
@@ -707,38 +670,38 @@ class Solver(object):
         raise NotImplementedError("No stepping routine has been defined!")
 
     # ========================================================================
-    #  Gauges
+    #  probes
     # ========================================================================
-    def write_gauge_values(self,solution):
-        r"""Write solution (or derived quantity) values at each gauge coordinate
+    def write_probe_values(self,solution):
+        r"""Write solution (or derived quantity) values at each probe coordinate
             to file.
         """
         import numpy as np
-        for i,gauge in enumerate(solution.state.grid.gauges):
+        for i,probe in enumerate(solution.state.grid.probes):
             if self.num_dim == 1:
-                ix=gauge[0];
+                ix=probe[0];
                 aux=solution.state.aux[:,ix]
                 q=solution.state.q[:,ix]
             elif self.num_dim == 2:
-                ix=gauge[0]; iy=gauge[1]
+                ix=probe[0]; iy=probe[1]
                 aux=solution.state.aux[:,ix,iy]
                 q=solution.state.q[:,ix,iy]
-            p=self.compute_gauge_values(q,aux)
+            p=self.compute_probe_values(q,aux)
             t=solution.t
-            if solution.state.keep_gauges:
-                gauge_data = solution.state.gauge_data
-                if len(gauge_data) == len(solution.state.grid.gauges):
-                    gauge_data[i]=np.vstack((gauge_data[i],np.append(t,p)))
+            if solution.state.keep_probes:
+                probe_data = solution.state.probe_data
+                if len(probe_data) == len(solution.state.grid.probes):
+                    probe_data[i]=np.vstack((probe_data[i],np.append(t,p)))
                 else:
-                    gauge_data.append(np.append(t,p))
+                    probe_data.append(np.append(t,p))
             
             try:
-                solution.state.grid.gauge_files[i].write(str(t)+' '+' '.join(str(j) 
+                solution.state.grid.probe_files[i].write(str(t)+' '+' '.join(str(j) 
                                                          for j in p)+'\n')  
             except:
-                raise Exception("Gauge files are not set up correctly. You should call \
-                       \nthe method `setup_gauge_files` of the Grid class object \
-                       \nbefore any call for `write_gauge_values` from the Solver class.")
+                raise Exception("probe files are not set up correctly. You should call \
+                       \nthe method `setup_probe_files` of the Grid class object \
+                       \nbefore any call for `write_probe_values` from the Solver class.")
                 
 
 if __name__ == "__main__":
